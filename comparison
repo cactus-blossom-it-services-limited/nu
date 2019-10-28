@@ -1,0 +1,177 @@
+#!/usr/bin/env php
+<?php
+$annual_usage = 0;
+$contents = '';
+$plans = [];
+function annual_usage($annual_usage, array $plans)
+{
+    foreach ($plans as $key => $value) {
+        $sum = 0; // re-initialise the $sum to zero on each loop
+        // this loops through each plan, an array containing supplier, plan and optional standing_charge and rates;
+        //rates are an array of arrays with price/ threshold paired elements as well as single element prices
+        if (is_array($value)) { // it will always be an array: @TODO error handling
+            foreach ($value as $k => $v) {
+                // loop through each value and array in the plan
+                $annual_sd = 0; // re-initialise the optional annual standard charge to 0 on each loop
+                $threshold_count = 0; // re-initialise the threshold count on each loop
+                $threshold_count = $annual_usage; // re-initialise the value at start of each 'rate' loop
+
+                if ($k == 'supplier') { // if the key has the value 'supplier'
+                    //echo "Supplier: $v" . PHP_EOL;
+                    $supplier = $v;
+                } elseif ($k == 'plan') { // if the key has the value 'plan'
+                    //echo "Plan: $v" . PHP_EOL;
+                    $plan = $v;
+                } elseif ($k == 'standing_charge') { // if the key has the value 'standing_charge'
+                    //echo "Standing charge: $v" . PHP_EOL; // The standing charge is not in every plan
+                    $annual_sd = (365 * $v); // If standing charge exists calculate the annual total from the daily rate
+                    $sum += $annual_sd; // add the annual standing charge to the sum
+                    //echo "Annual Standing charge: $annual_sd " . PHP_EOL;
+                } elseif ($k == 'rates') { // if the key has the value 'rates'
+                    if (is_array($v)) { // it should be an array: @TODO error handling..
+                        for ($i = 0; $i < count($v); $i++) { // count the no. of elements in the array and loop through them
+                            if (is_array($v[$i]) && count($v[$i]) > 1) { //  if there is more than one element in the array
+                                (int)$threshold = $v[$i]['threshold']; // get the value of the threshold in the price/ threshold pair
+                                $price_multiplied_by_threshold = $v[$i]['price'] * $threshold; // this is a price/ threshold pair so get product
+                                $sum += $price_multiplied_by_threshold;
+                                (int)$threshold_count -= (int)$threshold; // decrease the value of $threshold_count
+                            }
+                            if (is_array($v[$i]) && count($v[$i]) == 1) { // if there is only one element in the array
+                                if (isset($v[$i]['price'])) { // if there is a key 'price'
+                                    (int)$price_multiplied_by_threshold_count = (int)$threshold_count * $v[$i]['price'];
+                                    $sum += $price_multiplied_by_threshold_count;
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+            }
+            $total = 0;
+            $total = $sum;
+            if (!empty($total))
+                $total += $total * 0.05; // add on 5% VAT
+            $total = $total / 100; // convert the figure from pence to pounds
+            $total = round(floatval($total), 2); // make float to 2 decimal places
+            $total = number_format($total, 2);
+            //echo "Total: £$total" . PHP_EOL;
+            $suppliers_arr[] = $supplier;
+            $plans_arr[] = $plan;
+            $totals_arr[] = $total;
+
+        }
+    }
+
+    array_multisort($totals_arr, $suppliers_arr, $plans_arr);
+
+    for ($g = 0; $g < count($suppliers_arr); $g++) {
+        $outputs[] = "$suppliers_arr[$g],$plans_arr[$g],$totals_arr[$g]" . PHP_EOL;
+    }
+    return $outputs;
+}
+
+$contents = '';
+$plans = [];
+
+// Get contents of the JSON file
+$contents = file_get_contents("plans.json");
+$plans = json_decode($contents, true);
+
+function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
+{
+    $total_energy = 0;
+    $standing_charge_value = 0;
+    $remain_energy = 0;
+    $key_number = 0;
+    $annual_spend = 0;
+    $running_total = 0;
+    // Take monthly spend as input
+    $annual_spend = (int)$monthly_spend * 1200;
+    // find which element of the $plans array the input $supplier_company belongs to
+    $key_number = array_search($supplier_company, array_column($plans, 'supplier'));
+    // focus on the rates array of the $plans element
+    $key_does_exist = array_key_exists('standing_charge', $plans[$key_number]);
+    if ($key_does_exist) {
+        $standing_charge_value = $plans[$key_number]['standing_charge'];
+    }
+    if (isset($standing_charge_value) && !empty($standing_charge_value)) {
+        $standing_charge_value *= 365;
+        $standing_charge_value *= 1.05;
+        // add VAT
+        // subtract the annual standing charge from the $annual_spend
+        $annual_spend -= $standing_charge_value;
+    }
+
+    $rates_array = $plans[$key_number]['rates'];
+    print_r($rates_array);
+    for ($cnt = 0; $cnt < count($rates_array); $cnt++) {
+        // loop through the elements of the rates array
+                    if(isset($rates_array[$cnt]['threshold'])) {
+                        $threshold_value = $rates_array[$cnt]['threshold']; // get the value of the threshold in the price/ threshold pair
+                        $running_total += $threshold_value;
+                        $price_multiplied_by_threshold_value = $rates_array[$cnt]['price'] * $threshold_value; // this is a price/ threshold pair so get product
+                        // subtract it from the $annual_spend
+                        $annual_spend -= $price_multiplied_by_threshold_value;
+                    } else {
+                        $rates_array[$cnt]['price'] *= 1.05; //add VAT
+                        // divide $annual_spend by the price and add to $running_total
+                        $remain_energy = $annual_spend / $rates_array[$cnt]['price'];
+                       var_dump($remain_energy);
+                        $running_total += $remain_energy;
+                    }
+
+                $running_total = round($running_total);
+                return $running_total;
+            }
+
+}
+
+// Take input from input file
+$f = fopen('php://stdin', 'r');
+while ($line = fgets($f)) {
+    $lines[] = $line;
+}
+
+fclose($f);
+foreach ($lines as $line) {
+    $each_line[] = explode(" ", $line);
+}
+$energy_usage = [];
+$annual_usage = [];
+$lines = [];
+for ($t = 0; $t < count($each_line); $t++) {
+    if (count($each_line[$t]) == 2) { // price ANNUAL_USAGE input line
+        $annual_usage[] = $each_line[$t][1];
+    } elseif (count($each_line[$t]) == 4 && $each_line[$t][0] == 'usage') { // usage SUPPLIER_NAME PLAN_NAME SPEND input line
+        $energy_usage['supplier_name'][] = $each_line[$t][1];
+        $energy_usage['plan_name'][] = $each_line[$t][2];
+        $energy_usage['spend'][] = $each_line[$t][3];
+
+    } elseif ($each_line[$t][0] == 'exit') {
+        die();
+    }
+}
+
+
+for ($j = 0; $j < count($annual_usage); $j++) {
+    $au[$j] = annual_usage($annual_usage[$j], $plans);
+}
+foreach ($au as $line_of_output) {
+    if (is_array($line_of_output)) {
+        foreach ($line_of_output as $ee => $ff) {
+            echo $ff;
+        }
+    }
+}
+
+$line_of_output = '';
+for ($j = 0; $j < count($energy_usage['supplier_name']); $j++) {
+    var_dump($energy_usage['supplier_name'][0]);
+    $eu[$j] = energy_usage($energy_usage['supplier_name'][$j], $energy_usage['plan_name'][$j], $energy_usage['spend'][$j], $plans);
+}
+foreach ($eu as $line_of_output) {
+    echo $line_of_output . PHP_EOL;
+    }
+
+?>
