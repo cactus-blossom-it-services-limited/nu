@@ -13,7 +13,6 @@ function annual_usage($annual_usage, array $plans)
             foreach ($value as $k => $v) {
                 // loop through each value and array in the plan
                 $annual_sd = 0; // re-initialise the optional annual standard charge to 0 on each loop
-                $threshold_count = 0; // re-initialise the threshold count on each loop
                 $threshold_count = $annual_usage; // re-initialise the value at start of each 'rate' loop
 
                 if ($k == 'supplier') { // if the key has the value 'supplier'
@@ -31,14 +30,16 @@ function annual_usage($annual_usage, array $plans)
                     if (is_array($v)) { // it should be an array: @TODO error handling..
                         for ($i = 0; $i < count($v); $i++) { // count the no. of elements in the array and loop through them
                             if (is_array($v[$i]) && count($v[$i]) > 1) { //  if there is more than one element in the array
-                                (int)$threshold = $v[$i]['threshold']; // get the value of the threshold in the price/ threshold pair
+                                $threshold_count = 0;
+                                $threshold = $v[$i]['threshold']; // get the value of the threshold in the price/ threshold pair
                                 $price_multiplied_by_threshold = $v[$i]['price'] * $threshold; // this is a price/ threshold pair so get product
                                 $sum += $price_multiplied_by_threshold;
-                                (int)$threshold_count -= (int)$threshold; // decrease the value of $threshold_count
+                                $threshold_count -= (int) $threshold; // decrease the value of $threshold_count
                             }
                             if (is_array($v[$i]) && count($v[$i]) == 1) { // if there is only one element in the array
                                 if (isset($v[$i]['price'])) { // if there is a key 'price'
-                                    (int)$price_multiplied_by_threshold_count = (int)$threshold_count * $v[$i]['price'];
+                                    $price_multiplied_by_threshold_count = (int) $threshold_count;
+                                    $price_multiplied_by_threshold_count *= $v[$i]['price'];
                                     $sum += $price_multiplied_by_threshold_count;
                                 }
                             }
@@ -80,7 +81,7 @@ $plans = json_decode($contents, true);
 
 function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
 {
-    $spend = $monthly_spend;
+    $spend = (int) $monthly_spend;
     $total_energy = 0;
     $standing_charge_value = 0;
     $remain_energy = 0;
