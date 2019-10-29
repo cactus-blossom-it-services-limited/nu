@@ -87,14 +87,15 @@ function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
     $annual_spend = 0;
     $running_total = 0;
     // Take monthly spend as input
-    $annual_spend = (int)$monthly_spend * 1200;
+    $annual_spend = $monthly_spend * 1200;
     // find which element of the $plans array the input $supplier_company belongs to
     $key_number = array_search($supplier_company, array_column($plans, 'supplier'));
-    // focus on the rates array of the $plans element
-    $key_does_exist = array_key_exists('standing_charge', $plans[$key_number]);
-    if ($key_does_exist) {
+    // focus on the rates array
+    $key_exists = array_key_exists('standing_charge', $plans[$key_number]);
+    if ($key_exists) {
         $standing_charge_value = $plans[$key_number]['standing_charge'];
     }
+
     if (isset($standing_charge_value) && !empty($standing_charge_value)) {
         $standing_charge_value *= 365;
         $standing_charge_value *= 1.05;
@@ -104,27 +105,27 @@ function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
     }
 
     $rates_array = $plans[$key_number]['rates'];
-    print_r($rates_array);
-    for ($cnt = 0; $cnt < count($rates_array); $cnt++) {
-        // loop through the elements of the rates array
-                    if(isset($rates_array[$cnt]['threshold'])) {
-                        $threshold_value = $rates_array[$cnt]['threshold']; // get the value of the threshold in the price/ threshold pair
-                        $running_total += $threshold_value;
-                        $price_multiplied_by_threshold_value = $rates_array[$cnt]['price'] * $threshold_value; // this is a price/ threshold pair so get product
-                        // subtract it from the $annual_spend
-                        $annual_spend -= $price_multiplied_by_threshold_value;
-                    } else {
-                        $rates_array[$cnt]['price'] *= 1.05; //add VAT
-                        // divide $annual_spend by the price and add to $running_total
-                        $remain_energy = $annual_spend / $rates_array[$cnt]['price'];
-                       var_dump($remain_energy);
-                        $running_total += $remain_energy;
-                    }
+    $prod_thresh_price = [];
+    $prod_thresh_price_total = 0;
+    $thresholds_total = 0;
+    $counter_total = 0;
+    $thresholds = array_column($rates_array, 'threshold');
+    $prices = array_column($rates_array, 'price');
 
-                $running_total = round($running_total);
-                return $running_total;
+    foreach($thresholds as $kth => $thresh) {
+        // loop through the threshold/ price pairs, calculate the product of each and add them
+               $prod_thresh_price_total += $prod_thresh_price[] = $thresh * $prices[$kth] * 1.05;
+               $thresholds_total += $thresh;
             }
+            print_r($prod_thresh_price);
+            //var_dump($prod_thresh_price_total);
+            $residual_price_total =  $annual_spend - $prod_thresh_price_total;
+            $residual_energy = $residual_price_total / (end($prices) * 1.05);
+            var_dump($residual_energy);
+            $total_energy = $residual_energy + $thresholds_total;
+            $total_energy = round($total_energy);
 
+            return $total_energy;
 }
 
 // Take input from input file
@@ -167,7 +168,6 @@ foreach ($au as $line_of_output) {
 
 $line_of_output = '';
 for ($j = 0; $j < count($energy_usage['supplier_name']); $j++) {
-    var_dump($energy_usage['supplier_name'][0]);
     $eu[$j] = energy_usage($energy_usage['supplier_name'][$j], $energy_usage['plan_name'][$j], $energy_usage['spend'][$j], $plans);
 }
 foreach ($eu as $line_of_output) {
