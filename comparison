@@ -80,6 +80,7 @@ $plans = json_decode($contents, true);
 
 function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
 {
+    $spend = $monthly_spend;
     $total_energy = 0;
     $standing_charge_value = 0;
     $remain_energy = 0;
@@ -87,7 +88,8 @@ function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
     $annual_spend = 0;
     $running_total = 0;
     // Take monthly spend as input
-    $annual_spend = $monthly_spend * 1200;
+    $spend *= 1200;
+    $annual_spend = $spend;
     // find which element of the $plans array the input $supplier_company belongs to
     $key_number = array_search($supplier_company, array_column($plans, 'supplier'));
     // focus on the rates array
@@ -117,11 +119,8 @@ function energy_usage($supplier_company, $plan_name, $monthly_spend, $plans)
                $prod_thresh_price_total += $prod_thresh_price[] = $thresh * $prices[$kth] * 1.05;
                $thresholds_total += $thresh;
             }
-            print_r($prod_thresh_price);
-            //var_dump($prod_thresh_price_total);
             $residual_price_total =  $annual_spend - $prod_thresh_price_total;
             $residual_energy = $residual_price_total / (end($prices) * 1.05);
-            var_dump($residual_energy);
             $total_energy = $residual_energy + $thresholds_total;
             $total_energy = round($total_energy);
 
